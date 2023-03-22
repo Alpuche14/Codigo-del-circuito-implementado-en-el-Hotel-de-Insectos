@@ -9,10 +9,10 @@
 //-----------------------------variables-para-las-conecciones---------------------------------------------------------------------------------------------------------------------------
 /* #define WIFI_SSID "SM52"
 #define WIFI_CLAVE "sm529981898501" */
-// #define WIFI_SSID "DIT-IoT"
-// #define WIFI_CLAVE "DITCisco98"
-#define WIFI_SSID "Alpuche"
-#define WIFI_CLAVE "compaltan"
+ #define WIFI_SSID "DIT-IoT"
+ #define WIFI_CLAVE "DITCisco98"
+//#define WIFI_SSID "Alpuche"
+//#define WIFI_CLAVE "compaltan"
 //#define WIFI_SSID "UT_CANCUN"
 //#define WIFI_CLAVE ""
 #define API_KEY "AIzaSyDA2n88zmKHenAvvOea4fl53Ha5CLOHxq4" //este es el api key de la base de datos
