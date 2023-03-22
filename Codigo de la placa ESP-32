@@ -1,0 +1,183 @@
+#include <Arduino.h>
+#include <WiFi.h>
+#include <Firebase_ESP_Client.h>
+#include "EasyBuzzer.h"
+#include <addons/TokenHelper.h>
+#include <addons/RTDBHelper.h>
+#include <DFRobot_DHT11.h>
+
+//-----------------------------variables-para-las-conecciones---------------------------------------------------------------------------------------------------------------------------
+/* #define WIFI_SSID "SM52"
+#define WIFI_CLAVE "sm529981898501" */
+// #define WIFI_SSID "DIT-IoT"
+// #define WIFI_CLAVE "DITCisco98"
+#define WIFI_SSID "Alpuche"
+#define WIFI_CLAVE "compaltan"
+//#define WIFI_SSID "UT_CANCUN"
+//#define WIFI_CLAVE ""
+#define API_KEY "AIzaSyDA2n88zmKHenAvvOea4fl53Ha5CLOHxq4" //este es el api key de la base de datos
+#define URL_BD "https://hotel-de-diaz-sm52-default-rtdb.firebaseio.com/" // este es el url de tu base de datos 
+//--------------------------------------------------------------------------------------------------------------------------------
+
+//---------------------------------------------definimos--objetos-y-variables-----------------------------------------
+
+#define DHT11_PIN 13
+#define PIR 18
+#define luztemp 17
+
+int mov;
+int temp;
+int humedad;
+bool luzm;
+bool apagador;
+
+DFRobot_DHT11 DHT;
+FirebaseData datos; // objeto de datos de firebase
+FirebaseAuth autenticacion; // datos de autenticación
+FirebaseConfig configuracion; //datos de configuracion
+unsigned long tiempo_transcurrido = 0;
+bool autenticado = false;
+
+//-------------------------------------------------coneccion a WIFI------------------------------------------------
+void conectarWifi() {
+  WiFi.begin(WIFI_SSID, WIFI_CLAVE);
+  Serial.print("Conectando a la red");
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print("..");
+    delay(300);
+  }
+  Serial.println();
+  Serial.print("Conectado exitosamente/ IP: ");
+  Serial.println(WiFi.localIP());
+}
+
+//-----------------------------------------------Codigo para iniciar Firebase-------------------------------------------------------------
+void iniciarFirebase() {
+  //Asignamos a configuraciÃ³n la API KEY
+  configuracion.api_key = API_KEY;
+  /*Asignamos la URL de firebase */
+  configuracion.database_url = URL_BD;
+  //Activamos la reconexiÃ³n del wifi
+  Firebase.reconnectWiFi(true);
+  Serial.println("Nuevo usuario  autenticandose...");
+  //Verificamos la autenticaciÃ³n (anÃ³nima)
+  if (Firebase.signUp(&configuracion, &autenticacion, "", "")) {
+    Serial.println("Usuario atenticado correctamente");
+    autenticado = true;
+  } else {
+    Serial.printf("&s\n", configuracion.signer.signupError.message.c_str());
+      autenticado = false;
+  }
+  configuracion.token_status_callback = tokenStatusCallback;
+  //inicializa firebase con las configuraciones realizadas
+  Firebase.begin(&configuracion, &autenticacion);
+}
+
+//-------------------------------------------------------------insercion de datos----------------------------------------------------------
+void insertDatos() {
+  if (millis() - tiempo_transcurrido > 10000 && autenticado && Firebase.ready()) {
+    tiempo_transcurrido = millis();
+    String ruta ="planta_baja/temperatura"; //esta es la ruta de donde se va a guardar el dato, se declaran como variables para usarse
+    String ruta2 ="planta_baja/humedad";
+    String ruta3 ="planta_baja/movimiento";
+    String ruta4 ="planta_baja/ctrfoco";
+
+     //------------------------------datos a insertar----------------------------------------
+                  
+    if (Firebase.RTDB.setInt(&datos, ruta , temp) ){ 
+      Serial.println("Dato actualizado");
+      printResult(datos);
+    }else {
+      Serial.println(datos.errorReason().c_str());
+    }
+
+    if (Firebase.RTDB.setInt(&datos, ruta2 , humedad) ){ 
+      Serial.println("Dato actualizado");
+      printResult(datos);
+    }else {
+      Serial.println(datos.errorReason().c_str());
+    }
+
+    if (Firebase.RTDB.setBool(&datos, ruta3 , mov) ){ 
+      Serial.println("Dato actualizado");
+      printResult(datos);
+    }else {
+      Serial.println(datos.errorReason().c_str());
+    }
+        if (Firebase.RTDB.setBool(&datos, ruta4 , luzm) ){ 
+      Serial.println("Dato actualizado");
+      printResult(datos);
+    }else {
+      Serial.println(datos.errorReason().c_str());
+    }
+  }
+}
+
+//-------------------------------------------------obtener-datos------------------------------------------------------
+  void obtenerDatos() {
+
+        if (Firebase.RTDB.getBool(&datos, "planta_baja/ctrfoco" )){ 
+        //aqui pones otra vez la pinche ruta para obtener tus datos ojo este es el peor enemigo para un dislexico
+        //solo traeremos un dato boleano para apagar la luz desde la app
+
+        luzm=datos.intData();
+        //aeui guardamos los datos en una nueva variable por que nos encanta redundar los datos
+}         
+
+}
+
+void apagadomanual(){
+
+if (luzm == HIGH){
+  
+digitalWrite(luztemp, HIGH);
+
+}
+  
+}
+
+void encendidoaut(){
+if (temp < 24){
+
+  luzm=1;
+}
+if (temp > 28){
+    luzm=0;
+
+}
+  
+}
+
+
+void setup() {
+  Serial.begin(115200);
+  conectarWifi();
+  iniciarFirebase();
+  pinMode(mov,INPUT);
+  pinMode(luztemp,OUTPUT);
+}
+
+void loop() {
+  insertDatos();
+  obtenerDatos();
+  DHT.read(DHT11_PIN);
+  mov=digitalRead(PIR);
+ temp=DHT.temperature;
+
+  humedad=DHT.humidity;
+  
+  Serial.println("-------------------------------------------------------temperatura--------------------------------------------------------------------"); 
+  Serial.println("temp:");
+  Serial.println(DHT.temperature);
+  Serial.println("  humi:");
+  Serial.println(DHT.humidity);
+  Serial.println("-------------------------------------------------------movimiento--------------------------------------------------------------------");  
+  Serial.println(mov);
+
+
+encendidoaut();
+apagadomanual();
+  
+  delay(2000);
+
+}
